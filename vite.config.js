@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react()],
   root: path.resolve(__dirname, 'frontend'),
   build: {
-    outDir: path.resolve(__dirname, 'frontend/dist'),
+    outDir: path.resolve(__dirname, 'backend/dist'),
     emptyOutDir: true,
     assetsDir: 'assets',
     rollupOptions: {

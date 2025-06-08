@@ -12,18 +12,4 @@ services:
     startCommand: cd backend && gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
-        value: 3.10.0
-
-  # Frontend Static Site
-  - type: web
-    name: viddown-frontend
-    env: static
-    buildCommand: npm install && npm run build
-    staticPublishPath: ./frontend/dist
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://viddown-api.onrender.com/$1
-      - type: rewrite
-        source: /*
-        destination: /index.html 
+        value: 3.10.0 
