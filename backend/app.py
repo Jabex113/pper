@@ -5,16 +5,23 @@ import requests
 import yt_dlp as youtube_dl
 import re
 
-app = Flask(__name__, static_folder='downloads')
-# Enable CORS for all routes and all origins
+# Set up Flask app to serve both API and frontend
+frontend_build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist'))
+app = Flask(__name__, static_folder=frontend_build_dir)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Simple route to test if API is working
-@app.route('/')
-def index():
-    return jsonify({"message": "VidDown API is running"}), 200
+# API Routes
 
-@app.route('/download', methods=['POST'])
+# Simple route to test if API is working
+@app.route('/api/health')
+def health_check():
+    return jsonify({"status": "healthy"})
+
+@app.route('/api')
+def api_index():
+    return jsonify({"message": "VidDown API is running"})
+
+@app.route('/api/download', methods=['POST'])
 def download_video():
     data = request.get_json()
     url = data.get('url', '')
@@ -282,7 +289,7 @@ def download_phub(url):
                 'error': 'File was not downloaded correctly'
             }), 500
 
-@app.route('/platforms', methods=['GET'])
+@app.route('/api/platforms', methods=['GET'])
 def get_platforms():
     platforms = [
         {"id": "tiktok", "name": "TikTok"},
@@ -352,7 +359,7 @@ def download_generic(url):
         print(error_details)
         return jsonify({'error': f"Download failed: {str(e)}"}), 500
 
-@app.route('/downloads/<path:filename>')
+@app.route('/api/downloads/<path:filename>')
 def download_file(filename):
     print(f"Requested file download: {filename}")
     
@@ -373,7 +380,7 @@ def download_file(filename):
         print(f"File not found: {filename}")
         return jsonify({'error': 'File not found'}), 404
 
-@app.route('/download-source')
+@app.route('/api/download-source')
 def download_source_code():
     """Endpoint to redirect users to the GitHub repository"""
     # Redirect to the GitHub repository
@@ -381,10 +388,16 @@ def download_source_code():
     print(f"Redirecting to GitHub repository: {github_repo_url}")
     return redirect(github_repo_url)
 
-# Add a health check endpoint
-@app.route('/health')
-def health_check():
-    return jsonify({"status": "healthy"})
+# Serve frontend routes
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_frontend(path):
+    # First, try to serve the requested path as a static file
+    if path and os.path.exists(os.path.join(frontend_build_dir, path)):
+        return send_from_directory(frontend_build_dir, path)
+    
+    # Otherwise, serve index.html for client-side routing
+    return send_from_directory(frontend_build_dir, 'index.html')
 
 if __name__ == '__main__':
     # Create downloads directory if it doesn't exist

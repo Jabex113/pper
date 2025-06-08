@@ -1,15 +1,19 @@
 #!/bin/bash
 
-# Create pper.zip for source code download
-echo "Creating source code zip file..."
-zip -r pper.zip . -x "node_modules/*" -x ".git/*" -x "frontend/dist/*" -x "backend/downloads/*"
+echo "Setting up combined frontend/backend deployment..."
 
 # Build the frontend
 echo "Building frontend..."
 npm run build
 
 # Create downloads directory if it doesn't exist
+echo "Creating downloads directory..."
 mkdir -p backend/downloads
 
+# Add Git info
+echo "Configuring Git..."
+git config --global --add safe.directory /opt/render/project/src
+
 echo "Deployment preparations complete!"
-echo "You can now deploy to Render using the render.yaml configuration." 
+echo "Now you can deploy to Render using the render.yaml configuration."
+echo "Your application will be available at https://viddown.onrender.com after deployment."
