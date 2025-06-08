@@ -6,31 +6,17 @@ import yt_dlp as youtube_dl
 import re
 
 # Set up Flask app to serve both API and frontend
-# Look for frontend build in different possible locations - prioritize backend/dist
-possible_frontend_dirs = [
-    os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist')),  # backend/dist
-    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')),
-    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist')),
-]
+# Look for frontend build directly in backend/dist directory
+frontend_build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist'))
+print(f"Using frontend build directory: {frontend_build_dir}")
 
-# Find the first directory that exists
-frontend_build_dir = None
-for dir_path in possible_frontend_dirs:
-    if os.path.exists(dir_path):
-        # Check if this directory actually contains index.html
-        if os.path.exists(os.path.join(dir_path, 'index.html')):
-            frontend_build_dir = dir_path
-            print(f"Found frontend build with index.html at: {frontend_build_dir}")
-            break
-        else:
-            print(f"Directory exists but no index.html found at: {dir_path}")
-    else:
-        print(f"Directory does not exist: {dir_path}")
-
-# If no build directory is found, use the first option as default and log a warning
-if frontend_build_dir is None:
-    frontend_build_dir = possible_frontend_dirs[0]
-    print(f"Warning: No frontend build directory with index.html found. Using default: {frontend_build_dir}")
+# Try to create the directory if it doesn't exist
+if not os.path.exists(frontend_build_dir):
+    try:
+        os.makedirs(frontend_build_dir, exist_ok=True)
+        print(f"Created frontend build directory: {frontend_build_dir}")
+    except Exception as e:
+        print(f"Failed to create directory: {str(e)}")
 
 app = Flask(__name__, static_folder=frontend_build_dir)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -422,92 +408,37 @@ def serve_frontend(path):
     print(f"Frontend build directory: {frontend_build_dir}")
     
     if os.path.exists(frontend_build_dir):
-        print(f"Files in build directory: {os.listdir(frontend_build_dir)}")
+        print(f"Frontend directory exists, contains: {os.listdir(frontend_build_dir)}")
+        
+        # Check for index.html
+        if os.path.exists(os.path.join(frontend_build_dir, 'index.html')):
+            print(f"Frontend index.html exists")
+        else:
+            print(f"WARNING: Frontend index.html NOT found")
     else:
-        print("Directory not found")
-        # Try to create the directory
-        try:
-            os.makedirs(frontend_build_dir, exist_ok=True)
-            print(f"Created directory: {frontend_build_dir}")
-        except Exception as e:
-            print(f"Failed to create directory: {str(e)}")
+        print(f"WARNING: Frontend directory does not exist")
     
     # First, try to serve the requested path as a static file
     if path and os.path.exists(os.path.join(frontend_build_dir, path)):
         print(f"Serving file: {path}")
         return send_from_directory(frontend_build_dir, path)
     
-    # Otherwise, create a simple HTML page to show on the homepage
-    try:
-        if os.path.exists(os.path.join(frontend_build_dir, 'index.html')):
-            print("Serving index.html")
-            return send_from_directory(frontend_build_dir, 'index.html')
-        else:
-            # Only show the fallback if we couldn't find the real frontend
-            print("WARNING: Using fallback HTML page. Your React frontend was not built properly.")
-            # Your existing fallback HTML code...
-            html_content = """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>VidDown - Video Downloader (FALLBACK)</title>
-                <style>
-                    body {
-                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-                        line-height: 1.6;
-                        color: #333;
-                        max-width: 800px;
-                        margin: 0 auto;
-                        padding: 20px;
-                    }
-                    .warning {
-                        background-color: #ffe0e0;
-                        border: 1px solid #ff5757;
-                        padding: 15px;
-                        margin-bottom: 20px;
-                        border-radius: 5px;
-                    }
-                    h1 {
-                        color: #5b00e6;
-                        text-align: center;
-                        margin-bottom: 30px;
-                    }
-                    .container {
-                        background-color: #f9f9fb;
-                        border-radius: 10px;
-                        padding: 20px;
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="warning">
-                    <h2>⚠️ This is a fallback page</h2>
-                    <p>Your React frontend build is missing. Please make sure your build process is working correctly.</p>
-                </div>
-                
-                <h1>VidDown - Video Downloader</h1>
-                
-                <div class="container">
-                    <p>Your API is running, but the frontend build couldn't be found.</p>
-                    <p>Possible reasons:</p>
-                    <ul>
-                        <li>The build process didn't complete successfully</li>
-                        <li>The built files were not copied to the expected location</li>
-                        <li>Permissions issues preventing access to the build files</li>
-                    </ul>
-                    
-                    <p>To check your API, visit: <a href="/api">/api</a></p>
-                </div>
-            </body>
-            </html>
-            """
-            return html_content
-    except Exception as e:
-        print(f"Error serving content: {str(e)}")
-        return f"Error: {str(e)}", 500
+    # Then try to serve index.html
+    if os.path.exists(os.path.join(frontend_build_dir, 'index.html')):
+        print(f"Serving index.html")
+        return send_from_directory(frontend_build_dir, 'index.html')
+    
+    # If no index.html exists, return a simple error page
+    return """
+    <html>
+    <head><title>VidDown - Build Error</title></head>
+    <body>
+        <h1>Frontend Build Not Found</h1>
+        <p>The React frontend build was not found. Please check deployment logs.</p>
+        <p><a href="/api">Check API Status</a></p>
+    </body>
+    </html>
+    """
 
 if __name__ == '__main__':
     # Create downloads directory if it doesn't exist
