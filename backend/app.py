@@ -421,12 +421,190 @@ def serve_frontend(path):
         print(f"Serving file: {path}")
         return send_from_directory(frontend_build_dir, path)
     
-    # Otherwise, serve index.html for client-side routing
+    # Otherwise, create a simple HTML page to show on the homepage
     try:
-        print("Serving index.html")
-        return send_from_directory(frontend_build_dir, 'index.html')
+        if os.path.exists(os.path.join(frontend_build_dir, 'index.html')):
+            print("Serving index.html")
+            return send_from_directory(frontend_build_dir, 'index.html')
+        else:
+            # If index.html doesn't exist, serve a basic HTML page
+            print("Serving generated HTML page")
+            html_content = """
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>VidDown - Video Downloader</title>
+                <style>
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        max-width: 800px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }
+                    h1 {
+                        color: #5b00e6;
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }
+                    .container {
+                        background-color: #f9f9fb;
+                        border-radius: 10px;
+                        padding: 20px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    }
+                    .form-group {
+                        margin-bottom: 20px;
+                    }
+                    label {
+                        display: block;
+                        margin-bottom: 5px;
+                        font-weight: bold;
+                    }
+                    input[type="text"] {
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        font-size: 16px;
+                    }
+                    select {
+                        width: 100%;
+                        padding: 10px;
+                        border: 1px solid #ddd;
+                        border-radius: 4px;
+                        font-size: 16px;
+                    }
+                    button {
+                        background-color: #5b00e6;
+                        color: white;
+                        border: none;
+                        padding: 12px 20px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        font-size: 16px;
+                        display: block;
+                        margin: 0 auto;
+                    }
+                    button:hover {
+                        background-color: #4500b4;
+                    }
+                    .platforms {
+                        display: flex;
+                        justify-content: space-around;
+                        flex-wrap: wrap;
+                        margin-top: 30px;
+                    }
+                    .platform {
+                        text-align: center;
+                        margin: 10px;
+                    }
+                    .footer {
+                        text-align: center;
+                        margin-top: 30px;
+                        color: #666;
+                    }
+                    .api-link {
+                        text-align: center;
+                        margin-top: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>VidDown - Video Downloader</h1>
+                
+                <div class="container">
+                    <div class="form-group">
+                        <label for="url">Video URL:</label>
+                        <input type="text" id="url" placeholder="Paste video URL here...">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="platform">Platform:</label>
+                        <select id="platform">
+                            <option value="auto">Auto Detect</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="tiktok">TikTok</option>
+                            <option value="facebook">Facebook</option>
+                            <option value="phub">Adult Content</option>
+                        </select>
+                    </div>
+                    
+                    <button id="downloadBtn">Download</button>
+                    
+                    <div class="api-link">
+                        <p>API Status: <a href="/api">Check API</a></p>
+                    </div>
+                    
+                    <div class="platforms">
+                        <div class="platform">
+                            <h3>YouTube</h3>
+                            <p>High quality videos</p>
+                        </div>
+                        <div class="platform">
+                            <h3>TikTok</h3>
+                            <p>Short-form videos</p>
+                        </div>
+                        <div class="platform">
+                            <h3>Facebook</h3>
+                            <p>Social videos</p>
+                        </div>
+                        <div class="platform">
+                            <h3>Adult Content</h3>
+                            <p>Various platforms</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>&copy; 2025 VidDown - Video Downloader. All rights reserved.</p>
+                    <p>This tool is for personal use only. Please respect copyright laws.</p>
+                </div>
+                
+                <script>
+                    document.getElementById('downloadBtn').addEventListener('click', function() {
+                        const url = document.getElementById('url').value;
+                        const platform = document.getElementById('platform').value;
+                        
+                        if (!url) {
+                            alert('Please enter a video URL');
+                            return;
+                        }
+                        
+                        fetch('/api/download', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                url: url,
+                                platform: platform
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Download successful! Filename: ' + data.filename);
+                                window.location.href = '/api/downloads/' + data.filename;
+                            } else {
+                                alert('Download failed: ' + (data.error || 'Unknown error'));
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('An error occurred during download.');
+                        });
+                    });
+                </script>
+            </body>
+            </html>
+            """
+            return html_content
     except Exception as e:
-        print(f"Error serving index.html: {str(e)}")
+        print(f"Error serving content: {str(e)}")
         return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
