@@ -6,7 +6,26 @@ import yt_dlp as youtube_dl
 import re
 
 # Set up Flask app to serve both API and frontend
-frontend_build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist'))
+# Look for frontend build in different possible locations
+possible_frontend_dirs = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist')),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist')),
+]
+
+# Find the first directory that exists
+frontend_build_dir = None
+for dir_path in possible_frontend_dirs:
+    if os.path.exists(dir_path):
+        frontend_build_dir = dir_path
+        print(f"Found frontend build at: {frontend_build_dir}")
+        break
+
+# If no build directory is found, use the first option as default and log a warning
+if frontend_build_dir is None:
+    frontend_build_dir = possible_frontend_dirs[0]
+    print(f"Warning: No frontend build directory found. Using default: {frontend_build_dir}")
+
 app = Flask(__name__, static_folder=frontend_build_dir)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
@@ -392,12 +411,23 @@ def download_source_code():
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_frontend(path):
+    # Debug output to understand what's happening
+    print(f"Received request for path: {path}")
+    print(f"Frontend build directory: {frontend_build_dir}")
+    print(f"Files in build directory: {os.listdir(frontend_build_dir) if os.path.exists(frontend_build_dir) else 'Directory not found'}")
+    
     # First, try to serve the requested path as a static file
     if path and os.path.exists(os.path.join(frontend_build_dir, path)):
+        print(f"Serving file: {path}")
         return send_from_directory(frontend_build_dir, path)
     
     # Otherwise, serve index.html for client-side routing
-    return send_from_directory(frontend_build_dir, 'index.html')
+    try:
+        print("Serving index.html")
+        return send_from_directory(frontend_build_dir, 'index.html')
+    except Exception as e:
+        print(f"Error serving index.html: {str(e)}")
+        return f"Error: {str(e)}", 500
 
 if __name__ == '__main__':
     # Create downloads directory if it doesn't exist

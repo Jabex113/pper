@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [react()],
   root: path.resolve(__dirname, 'frontend'),
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, 'frontend/dist'),
     emptyOutDir: true,
   },
   server: {
