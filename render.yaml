@@ -1,0 +1,24 @@
+services:
+  # Backend API Service
+  - type: web
+    name: viddown-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -b 0.0.0.0:$PORT app:app --chdir backend
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+
+  # Frontend Static Site
+  - type: web
+    name: viddown-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://viddown-api.onrender.com/$1
+      - type: rewrite
+        source: /*
+        destination: /index.html 
