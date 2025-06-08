@@ -6,25 +6,31 @@ import yt_dlp as youtube_dl
 import re
 
 # Set up Flask app to serve both API and frontend
-# Look for frontend build in different possible locations
+# Look for frontend build in different possible locations - prioritize backend/dist
 possible_frontend_dirs = [
+    os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist')),  # backend/dist
     os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend', 'dist')),
     os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist')),
-    os.path.abspath(os.path.join(os.path.dirname(__file__), 'dist')),
 ]
 
 # Find the first directory that exists
 frontend_build_dir = None
 for dir_path in possible_frontend_dirs:
     if os.path.exists(dir_path):
-        frontend_build_dir = dir_path
-        print(f"Found frontend build at: {frontend_build_dir}")
-        break
+        # Check if this directory actually contains index.html
+        if os.path.exists(os.path.join(dir_path, 'index.html')):
+            frontend_build_dir = dir_path
+            print(f"Found frontend build with index.html at: {frontend_build_dir}")
+            break
+        else:
+            print(f"Directory exists but no index.html found at: {dir_path}")
+    else:
+        print(f"Directory does not exist: {dir_path}")
 
 # If no build directory is found, use the first option as default and log a warning
 if frontend_build_dir is None:
     frontend_build_dir = possible_frontend_dirs[0]
-    print(f"Warning: No frontend build directory found. Using default: {frontend_build_dir}")
+    print(f"Warning: No frontend build directory with index.html found. Using default: {frontend_build_dir}")
 
 app = Flask(__name__, static_folder=frontend_build_dir)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -414,7 +420,17 @@ def serve_frontend(path):
     # Debug output to understand what's happening
     print(f"Received request for path: {path}")
     print(f"Frontend build directory: {frontend_build_dir}")
-    print(f"Files in build directory: {os.listdir(frontend_build_dir) if os.path.exists(frontend_build_dir) else 'Directory not found'}")
+    
+    if os.path.exists(frontend_build_dir):
+        print(f"Files in build directory: {os.listdir(frontend_build_dir)}")
+    else:
+        print("Directory not found")
+        # Try to create the directory
+        try:
+            os.makedirs(frontend_build_dir, exist_ok=True)
+            print(f"Created directory: {frontend_build_dir}")
+        except Exception as e:
+            print(f"Failed to create directory: {str(e)}")
     
     # First, try to serve the requested path as a static file
     if path and os.path.exists(os.path.join(frontend_build_dir, path)):
@@ -427,15 +443,16 @@ def serve_frontend(path):
             print("Serving index.html")
             return send_from_directory(frontend_build_dir, 'index.html')
         else:
-            # If index.html doesn't exist, serve a basic HTML page
-            print("Serving generated HTML page")
+            # Only show the fallback if we couldn't find the real frontend
+            print("WARNING: Using fallback HTML page. Your React frontend was not built properly.")
+            # Your existing fallback HTML code...
             html_content = """
             <!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>VidDown - Video Downloader</title>
+                <title>VidDown - Video Downloader (FALLBACK)</title>
                 <style>
                     body {
                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -444,6 +461,13 @@ def serve_frontend(path):
                         max-width: 800px;
                         margin: 0 auto;
                         padding: 20px;
+                    }
+                    .warning {
+                        background-color: #ffe0e0;
+                        border: 1px solid #ff5757;
+                        padding: 15px;
+                        margin-bottom: 20px;
+                        border-radius: 5px;
                     }
                     h1 {
                         color: #5b00e6;
@@ -456,149 +480,27 @@ def serve_frontend(path):
                         padding: 20px;
                         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                     }
-                    .form-group {
-                        margin-bottom: 20px;
-                    }
-                    label {
-                        display: block;
-                        margin-bottom: 5px;
-                        font-weight: bold;
-                    }
-                    input[type="text"] {
-                        width: 100%;
-                        padding: 10px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        font-size: 16px;
-                    }
-                    select {
-                        width: 100%;
-                        padding: 10px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        font-size: 16px;
-                    }
-                    button {
-                        background-color: #5b00e6;
-                        color: white;
-                        border: none;
-                        padding: 12px 20px;
-                        border-radius: 4px;
-                        cursor: pointer;
-                        font-size: 16px;
-                        display: block;
-                        margin: 0 auto;
-                    }
-                    button:hover {
-                        background-color: #4500b4;
-                    }
-                    .platforms {
-                        display: flex;
-                        justify-content: space-around;
-                        flex-wrap: wrap;
-                        margin-top: 30px;
-                    }
-                    .platform {
-                        text-align: center;
-                        margin: 10px;
-                    }
-                    .footer {
-                        text-align: center;
-                        margin-top: 30px;
-                        color: #666;
-                    }
-                    .api-link {
-                        text-align: center;
-                        margin-top: 20px;
-                    }
                 </style>
             </head>
             <body>
+                <div class="warning">
+                    <h2>⚠️ This is a fallback page</h2>
+                    <p>Your React frontend build is missing. Please make sure your build process is working correctly.</p>
+                </div>
+                
                 <h1>VidDown - Video Downloader</h1>
                 
                 <div class="container">
-                    <div class="form-group">
-                        <label for="url">Video URL:</label>
-                        <input type="text" id="url" placeholder="Paste video URL here...">
-                    </div>
+                    <p>Your API is running, but the frontend build couldn't be found.</p>
+                    <p>Possible reasons:</p>
+                    <ul>
+                        <li>The build process didn't complete successfully</li>
+                        <li>The built files were not copied to the expected location</li>
+                        <li>Permissions issues preventing access to the build files</li>
+                    </ul>
                     
-                    <div class="form-group">
-                        <label for="platform">Platform:</label>
-                        <select id="platform">
-                            <option value="auto">Auto Detect</option>
-                            <option value="youtube">YouTube</option>
-                            <option value="tiktok">TikTok</option>
-                            <option value="facebook">Facebook</option>
-                            <option value="phub">Adult Content</option>
-                        </select>
-                    </div>
-                    
-                    <button id="downloadBtn">Download</button>
-                    
-                    <div class="api-link">
-                        <p>API Status: <a href="/api">Check API</a></p>
-                    </div>
-                    
-                    <div class="platforms">
-                        <div class="platform">
-                            <h3>YouTube</h3>
-                            <p>High quality videos</p>
-                        </div>
-                        <div class="platform">
-                            <h3>TikTok</h3>
-                            <p>Short-form videos</p>
-                        </div>
-                        <div class="platform">
-                            <h3>Facebook</h3>
-                            <p>Social videos</p>
-                        </div>
-                        <div class="platform">
-                            <h3>Adult Content</h3>
-                            <p>Various platforms</p>
-                        </div>
-                    </div>
+                    <p>To check your API, visit: <a href="/api">/api</a></p>
                 </div>
-                
-                <div class="footer">
-                    <p>&copy; 2025 VidDown - Video Downloader. All rights reserved.</p>
-                    <p>This tool is for personal use only. Please respect copyright laws.</p>
-                </div>
-                
-                <script>
-                    document.getElementById('downloadBtn').addEventListener('click', function() {
-                        const url = document.getElementById('url').value;
-                        const platform = document.getElementById('platform').value;
-                        
-                        if (!url) {
-                            alert('Please enter a video URL');
-                            return;
-                        }
-                        
-                        fetch('/api/download', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                url: url,
-                                platform: platform
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                alert('Download successful! Filename: ' + data.filename);
-                                window.location.href = '/api/downloads/' + data.filename;
-                            } else {
-                                alert('Download failed: ' + (data.error || 'Unknown error'));
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('An error occurred during download.');
-                        });
-                    });
-                </script>
             </body>
             </html>
             """

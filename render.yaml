@@ -4,12 +4,12 @@ services:
     name: viddown
     env: python
     buildCommand: |
+      # Use our custom build script
+      chmod +x ./render_build.sh
+      ./render_build.sh
+      # Install Python dependencies
       pip install -r requirements.txt
-      npm install
-      npm run build
-      mkdir -p dist
-      cp -r frontend/dist/* dist/
-    startCommand: gunicorn app:app
+    startCommand: cd backend && gunicorn app:app
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.0

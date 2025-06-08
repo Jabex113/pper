@@ -10,6 +10,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, 'frontend/dist'),
     emptyOutDir: true,
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
   server: {
     port: 5173,
